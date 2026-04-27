@@ -228,16 +228,17 @@ const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(
     // 2. Inisialisasi MediaPipe Face Landmarker
     useEffect(() => {
       let active = true;
+      let landmarkerInstance: FaceLandmarker | null = null;
+
       async function initFaceLandmarker() {
         try {
           setDebugText(prev => prev + " | MP: Fetching...");
           const filesetResolver = await FilesetResolver.forVisionTasks(
             "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
           );
-          let landmarker: FaceLandmarker;
           try {
             setDebugText(prev => prev + " | MP: GPU init...");
-            landmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+            landmarkerInstance = await FaceLandmarker.createFromOptions(filesetResolver, {
               baseOptions: {
                 modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
                 delegate: "GPU",
@@ -250,7 +251,7 @@ const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(
           } catch (gpuErr: any) {
             console.warn("GPU Delegate failed, falling back to CPU", gpuErr);
             setDebugText(prev => prev + " | MP: GPU FAIL, CPU init...");
-            landmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+            landmarkerInstance = await FaceLandmarker.createFromOptions(filesetResolver, {
               baseOptions: {
                 modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
                 delegate: "CPU",
@@ -261,14 +262,24 @@ const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(
             });
             setDebugText(prev => prev + " | MP: CPU OK");
           }
-          if (active) setFaceLandmarker(landmarker);
+
+          if (active && landmarkerInstance) {
+            setFaceLandmarker(landmarkerInstance);
+          } else {
+            // Jika komponen sudah unmount sebelum selesai loading, buang memori
+            landmarkerInstance?.close();
+          }
         } catch (err: any) {
           console.error("FaceLandmarker Error:", err);
           setDebugText(prev => prev + ` | MP: FAIL (${err.message})`);
         }
       }
       initFaceLandmarker();
-      return () => { active = false; };
+      return () => {
+        active = false;
+        // Mencegah kebocoran memori WebGL Context (batas browser biasanya 16 context)
+        landmarkerInstance?.close();
+      };
     }, []);
 
     // 3. Fungsi Gambar Stiker (Mendukung Pemotongan / Crop untuk Full-Face Filter)
