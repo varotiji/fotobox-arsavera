@@ -19,6 +19,11 @@ const filterStyleMap: Record<FilterType, string> = {
   cool:      "hue-rotate(30deg) saturate(1.2) brightness(1.05)",
   warm:      "sepia(30%) saturate(1.3) brightness(1.05)",
   dramatic:  "contrast(1.4) brightness(0.9) saturate(0.8)",
+  kawaii:    "brightness(1.1) saturate(1.3) hue-rotate(10deg)",
+  "soft-pink": "sepia(20%) saturate(1.4) hue-rotate(-20deg)",
+  dreamy:    "blur(1px) brightness(1.1)",
+  peach:     "sepia(30%) saturate(1.2) hue-rotate(-10deg)",
+  "cool-blue": "hue-rotate(180deg) saturate(1.2)",
 };
 
 function PhotoSlotItem({ index, photo, isActive, filter, onClick, onDelete }: PhotoSlotProps) {
