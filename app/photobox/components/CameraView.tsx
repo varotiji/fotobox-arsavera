@@ -50,41 +50,47 @@ const applyMagicWandAndCrop = (img: HTMLImageElement): CleanSticker => {
   if (!ctx) return { canvas, splitRatio: 0.5 };
 
   ctx.drawImage(img, 0, 0);
-  const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const data = imgData.data;
+  try {
+    const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imgData.data;
 
-  // === 1. MAGIC WAND BACKGROUND REMOVAL ===
-  // Hanya proses jika sudut kiri atas tidak transparan
-  if (data[3] > 0) {
-    const stack = new Uint32Array(canvas.width * canvas.height * 2);
-    let stackPtr = 0;
-    const push = (x: number, y: number) => { stack[stackPtr++] = x; stack[stackPtr++] = y; };
-    const pop = () => { const y = stack[--stackPtr]; const x = stack[--stackPtr]; return [x, y]; };
+    // === 1. MAGIC WAND BACKGROUND REMOVAL ===
+    // Hanya proses jika sudut kiri atas tidak transparan
+    if (data[3] > 0) {
+      const stack = new Uint32Array(canvas.width * canvas.height * 2);
+      let stackPtr = 0;
+      const push = (x: number, y: number) => { stack[stackPtr++] = x; stack[stackPtr++] = y; };
+      const pop = () => { const y = stack[--stackPtr]; const x = stack[--stackPtr]; return [x, y]; };
 
-    push(0, 0);
-    push(canvas.width - 1, 0);
-    push(0, canvas.height - 1);
-    push(canvas.width - 1, canvas.height - 1);
+      push(0, 0);
+      push(canvas.width - 1, 0);
+      push(0, canvas.height - 1);
+      push(canvas.width - 1, canvas.height - 1);
 
-    const visited = new Uint8Array(canvas.width * canvas.height);
+      const visited = new Uint8Array(canvas.width * canvas.height);
 
-    while (stackPtr > 0) {
-      const [x, y] = pop();
-      const idx = y * canvas.width + x;
-      if (visited[idx]) continue;
-      visited[idx] = 1;
+      while (stackPtr > 0) {
+        const [x, y] = pop();
+        const idx = y * canvas.width + x;
+        if (visited[idx]) continue;
+        visited[idx] = 1;
 
-      const p = idx * 4;
-      // Toleransi warna putih/abu terang (Background)
-      if (data[p] > 230 && data[p + 1] > 230 && data[p + 2] > 230) {
-        data[p + 3] = 0; // Transparan
-        if (x + 1 < canvas.width) push(x + 1, y);
-        if (x - 1 >= 0) push(x - 1, y);
-        if (y + 1 < canvas.height) push(x, y + 1);
-        if (y - 1 >= 0) push(x, y - 1);
+        const p = idx * 4;
+        // Toleransi warna putih/abu terang (Background)
+        if (data[p] > 230 && data[p + 1] > 230 && data[p + 2] > 230) {
+          data[p + 3] = 0; // Transparan
+          if (x + 1 < canvas.width) push(x + 1, y);
+          if (x - 1 >= 0) push(x - 1, y);
+          if (y + 1 < canvas.height) push(x, y + 1);
+          if (y - 1 >= 0) push(x, y - 1);
+        }
       }
+      ctx.putImageData(imgData, 0, 0);
     }
-    ctx.putImageData(imgData, 0, 0);
+  } catch (err) {
+    console.error("Canvas Tainted (CORS) during Magic Wand:", err);
+    // Jika CORS gagal, kita kembalikan saja canvas aslinya tanpa diproses
+    return { canvas, splitRatio: 0.5 };
   }
 
   // === 2. AUTO CROP (TRIM) ===
@@ -202,6 +208,7 @@ const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(
 
       names.forEach((name) => {
         const img = new window.Image();
+        img.crossOrigin = "anonymous"; // Penting untuk Vercel CDN agar Canvas tidak Tainted!
         img.src = `/stickers/${name}.png`;
         img.onload = () => {
           loaded[name] = img;
@@ -222,15 +229,29 @@ const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(
           const filesetResolver = await FilesetResolver.forVisionTasks(
             "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
           );
-          const landmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
-            baseOptions: {
-              modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
-              delegate: "GPU",
-            },
-            outputFaceBlendshapes: false,
-            runningMode: "VIDEO",
-            numFaces: 1,
-          });
+          let landmarker: FaceLandmarker;
+          try {
+            landmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+              baseOptions: {
+                modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+                delegate: "GPU",
+              },
+              outputFaceBlendshapes: false,
+              runningMode: "VIDEO",
+              numFaces: 1,
+            });
+          } catch (gpuErr) {
+            console.warn("GPU Delegate failed, falling back to CPU", gpuErr);
+            landmarker = await FaceLandmarker.createFromOptions(filesetResolver, {
+              baseOptions: {
+                modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
+                delegate: "CPU",
+              },
+              outputFaceBlendshapes: false,
+              runningMode: "VIDEO",
+              numFaces: 1,
+            });
+          }
           if (active) setFaceLandmarker(landmarker);
         } catch (err) {
           console.error("FaceLandmarker Error:", err);
