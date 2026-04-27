@@ -184,7 +184,6 @@ const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(
     const [selectedStickers, setSelectedStickers] = useState<string[]>([]);
     const selectedStickersRef = useRef<string[]>([]);
     const [cameraError, setCameraError] = useState<string | null>(null);
-    const [debugText, setDebugText] = useState<string>("Debug: Starting...");
 
     // MediaPipe state & refs
     const [faceLandmarker, setFaceLandmarker] = useState<FaceLandmarker | null>(null);
@@ -212,15 +211,11 @@ const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(
         img.src = `/stickers/${name}.png`;
         img.onload = () => {
           loaded[name] = img;
-          setDebugText(prev => prev + ` | img:${name} OK`);
           // Hapus background putih & Potong area kosong (Auto-Crop)
           if (!cleanStickerCache.has(img)) {
             cleanStickerCache.set(img, applyMagicWandAndCrop(img));
           }
           setStickerImgs(prev => ({ ...prev, [name]: img }));
-        };
-        img.onerror = () => {
-          setDebugText(prev => prev + ` | img:${name} FAIL`);
         };
       });
     }, []);
@@ -232,12 +227,10 @@ const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(
 
       async function initFaceLandmarker() {
         try {
-          setDebugText(prev => prev + " | MP: Fetching 0.10.34...");
           const filesetResolver = await FilesetResolver.forVisionTasks(
             "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.34/wasm"
           );
           try {
-            setDebugText(prev => prev + " | MP: GPU init...");
             landmarkerInstance = await FaceLandmarker.createFromOptions(filesetResolver, {
               baseOptions: {
                 modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
@@ -247,10 +240,8 @@ const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(
               runningMode: "VIDEO",
               numFaces: 1,
             });
-            setDebugText(prev => prev + " | MP: GPU OK");
           } catch (gpuErr: any) {
             console.warn("GPU Delegate failed, falling back to CPU", gpuErr);
-            setDebugText(prev => prev + " | MP: GPU FAIL, CPU init...");
             landmarkerInstance = await FaceLandmarker.createFromOptions(filesetResolver, {
               baseOptions: {
                 modelAssetPath: "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task",
@@ -260,7 +251,6 @@ const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(
               runningMode: "VIDEO",
               numFaces: 1,
             });
-            setDebugText(prev => prev + " | MP: CPU OK");
           }
 
           if (active && landmarkerInstance) {
@@ -271,7 +261,6 @@ const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(
           }
         } catch (err: any) {
           console.error("FaceLandmarker Error:", err);
-          setDebugText(prev => prev + ` | MP: FAIL (${err.message})`);
         }
       }
       initFaceLandmarker();
@@ -626,22 +615,6 @@ const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(
         )}
 
         <canvas ref={canvasRef} style={{ display: "none" }} />
-
-        <div style={{
-          position: "absolute",
-          top: 70, left: 10, right: 10,
-          background: "rgba(0,0,0,0.7)",
-          color: "#0f0",
-          fontFamily: "monospace",
-          fontSize: 10,
-          padding: 8,
-          borderRadius: 8,
-          pointerEvents: "none",
-          zIndex: 9999,
-          wordWrap: "break-word"
-        }}>
-          {debugText}
-        </div>
 
         {cameraError && (
           <div
