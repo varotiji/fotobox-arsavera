@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useRef, useCallback } from "react";
 import CameraView, { type CameraViewHandle } from "./components/CameraView";
@@ -168,6 +168,7 @@ export default function PhotoboxPage() {
           <CameraView
             ref={cameraRef}
             filter={filter}
+            onFilterChange={setFilter}
             countdown={countdown}
             isCapturing={isCapturing}
             onReady={setCameraReady}
@@ -224,11 +225,6 @@ export default function PhotoboxPage() {
               ? "✨ All 3 photos captured! Click \"View Strip\" to finish."
               : `Take photo ${filledCount + 1} of 3 — click the button above`}
           </p>
-        </div>
-
-        {/* Filter */}
-        <div className="glass" style={{ borderRadius: 20, padding: 16 }}>
-          <FilterSelector current={filter} onChange={setFilter} />
         </div>
 
         {/* Photo slots */}
