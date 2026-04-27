@@ -232,9 +232,9 @@ const CameraView = forwardRef<CameraViewHandle, CameraViewProps>(
 
       async function initFaceLandmarker() {
         try {
-          setDebugText(prev => prev + " | MP: Fetching...");
+          setDebugText(prev => prev + " | MP: Fetching 0.10.34...");
           const filesetResolver = await FilesetResolver.forVisionTasks(
-            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.34/wasm"
           );
           try {
             setDebugText(prev => prev + " | MP: GPU init...");
