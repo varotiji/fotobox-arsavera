@@ -38,7 +38,7 @@ export default function FilterSelector({ current, onChange }: FilterSelectorProp
       <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-secondary)" }}>
         Filter
       </p>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none" }}>
         {FILTERS.map((f) => {
           const isActive = current === f.id;
           return (
@@ -51,6 +51,8 @@ export default function FilterSelector({ current, onChange }: FilterSelectorProp
                 display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
                 padding: "8px 12px", borderRadius: 12, fontSize: 11, fontWeight: 600,
                 cursor: "pointer", transition: "all 0.2s", border: "none",
+                flexShrink: 0, // Mencegah tombol mengecil, memaksanya scroll horizontal
+                minWidth: "64px",
                 background: isActive
                   ? "linear-gradient(135deg, var(--accent), var(--accent2))"
                   : "rgba(255,255,255,0.05)",
