@@ -34,7 +34,25 @@ async function applyFilterToImage(
       canvas.height = height;
       const ctx = canvas.getContext("2d")!;
       ctx.filter = filterStr;
-      ctx.drawImage(img, 0, 0, width, height);
+
+      // Object-fit: cover logic
+      const imgRatio = img.width / img.height;
+      const targetRatio = width / height;
+
+      let sWidth = img.width;
+      let sHeight = img.height;
+      let sx = 0;
+      let sy = 0;
+
+      if (imgRatio > targetRatio) {
+        sWidth = img.height * targetRatio;
+        sx = (img.width - sWidth) / 2;
+      } else {
+        sHeight = img.width / targetRatio;
+        sy = (img.height - sHeight) / 2;
+      }
+
+      ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, width, height);
       ctx.filter = "none";
       resolve(canvas.toDataURL("image/jpeg", 0.92));
     };
